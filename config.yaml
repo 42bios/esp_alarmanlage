@@ -1,11 +1,19 @@
+substitutions:
+  name: olimex-alarm_system
+  friendly_name: Alarm System
+  
 esphome:
-  name: alarm_system
-  platform: ESP32
-  board: esp32dev
-
-wifi:
-  ssid: "SSID"
-  password: "PASSWORD"
+  name: ${name}
+  friendly_name: ${friendly_name}
+  name_add_mac_suffix: true
+  project:
+    name: esphome.alarm_system
+    version: "0.1"
+    
+esp32:
+  board: esp32-poe-iso
+  framework:
+    type: esp-idf
 
 # Ethernet
 ethernet:
