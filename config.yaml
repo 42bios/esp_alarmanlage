@@ -508,8 +508,7 @@ menu:
       device_class: door
     door_5:
       value_template: "{{ 'Open' if mcp.door_5 == LOW else 'Closed' }}"
-      icon_template: "{{ 'mdi:door-open' if mcp.door_5 == LOW else
-      'mdi:door-closed' }}"
+      icon_template: "{{ 'mdi:door-open' if mcp.door_5 == LOW else 'mdi:door-closed' }}"
       device_class: door
     door_6:
       value_template: "{{ 'Open' if mcp.door_6 == LOW else 'Closed' }}"
