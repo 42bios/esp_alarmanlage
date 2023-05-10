@@ -1,0 +1,878 @@
+esphome:
+  name: alarm_system
+  platform: ESP32
+  board: esp32dev
+
+wifi:
+  ssid: "SSID"
+  password: "PASSWORD"
+
+# Ethernet
+ethernet:
+  type: LAN8720
+  mdc_pin: GPIO23
+  mdio_pin: GPIO18
+  clk_mode: "ETH_CLOCK_GPIO17_OUT"
+  phy_addr: 0
+  power_pin: GPIO12
+
+# OLED Display
+i2c:
+  sda: GPIO21
+  scl: GPIO22
+
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x64"
+    address: 0x3C
+    dimension: 128x64
+
+# Keypad
+keypad:
+  rows: 4
+  columns: 4
+  pin_row_1: GPIO33
+  pin_row_2: GPIO25
+  pin_row_3: GPIO26
+  pin_row_4: GPIO27
+  pin_col_1: GPIO14
+  pin_col_2: GPIO12
+  pin_col_3: GPIO13
+  pin_col_4: GPIO15
+
+# NFC Reader
+spi:
+  clk_pin: GPIO18
+  mosi_pin: GPIO23
+  miso_pin: GPIO19
+
+mfrc522:
+  cs_pin: GPIO5
+
+# MCP23017 I/O Expander
+i2c:
+  sda: GPIO21
+  scl: GPIO22
+
+mcp23017:
+  - id: door_expander
+    address: 0x20
+
+# Alarm
+switch:
+  - platform: gpio
+    pin: GPIO32
+    name: "alarm_switch"
+    id: alarm_switch
+    restore_mode: ALWAYS_OFF
+
+# Alarm Timer
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+
+# NFC Tags
+nfc_tag:
+  - uid:
+      - 0x01, 0x02, 0x03, 0x04
+    name: "tag_1"
+  - uid:
+      - 0x05, 0x06, 0x07, 0x08
+    name: "tag_2"
+
+# PIN
+input_number:
+  - id: pin_input
+    name: "PIN"
+    min: 0
+    max: 9999
+    step: 1
+    mode: BOX
+
+# Menu
+menu:
+  - text: "Alarm System"
+    submenus:
+      - text: "Status"
+        variables:
+          - id: alarm_status_var
+            name: "Alarm Status"
+            type: "string"
+          - id: door_status_var
+            name: "Door Status"
+            type: "string"
+        actions:
+          - lambda: |
+              it.get_variable(id(alarm_status_var)).set_value(
+                id(alarm_switch).state ? "Armed" : "Disarmed"
+              )
+              door_expander.reset()
+              door_status = ""
+              for (int i = 0; i < 10; i++) {
+                if (door_expander.get_pin(i).state) {
+                  door_status += "Door " + String(i) + " is open.\n";
+                }
+              }
+              it.get_variable(id(door_status_var)).set_value(door_status)
+      - text: "Arming"
+        variables:
+          - id: pin_entered_var
+            name: "PIN Entered"
+            type: "bool"
+          - id: pin_wrong_var
+        name: "Wrong PIN Entered"
+        type: "bool"
+      - id: door_changed_var
+        name: "Door Changed"
+        type: "bool"
+      - id: alarm_timer_var
+        name: "Alarm Timer"
+        type: "string"
+    actions:
+      - lambda: |
+          it.get_variable(id(pin_entered_var)).set_value(false)
+          it.get_variable(id(pin_wrong_var)).set_value(false)
+          it.get_variable(id(door_changed_var)).set_value(false)
+          it.get_variable(id(alarm_timer_var)).set_value("")
+
+          keypad.clear()
+          keypad.set_cursor(0, 0)
+          keypad.print("Enter PIN:")
+      - wait_until: pin_entered_var
+      - lambda: |
+          String entered_pin = String(id(pin_input).state).substring(0, 4);
+          if (entered_pin == "1234") {
+            it.get_variable(id(pin_wrong_var)).set_value(false)
+            it.get_variable(id(alarm_timer_var)).set_value(
+              homeassistant_time.now().strftime("%H:%M:%S")
+            )
+            it.get_variable(id(pin_entered_var)).set_value(false)
+            menu.set_current("Main")
+          } else {
+            it.get_variable(id(pin_wrong_var)).set_value(true)
+            keypad.clear()
+            keypad.set_cursor(0, 0)
+            keypad.print("Wrong PIN!")
+            it.get_variable(id(pin_entered_var)).set_value(false)
+          }
+  - text: "Disarming"
+    variables:
+      - id: pin_entered_var
+        name: "PIN Entered"
+        type: "bool"
+      - id: pin_wrong_var
+        name: "Wrong PIN Entered"
+        type: "bool"
+      - id: alarm_timer_var
+        name: "Alarm Timer"
+        type: "string"
+    actions:
+      - lambda: |
+          it.get_variable(id(pin_entered_var)).set_value(false)
+          it.get_variable(id(pin_wrong_var)).set_value(false)
+          it.get_variable(id(alarm_timer_var)).set_value("")
+
+          keypad.clear()
+          keypad.set_cursor(0, 0)
+          keypad.print("Enter PIN:")
+      - wait_until: pin_entered_var
+      - lambda: |
+          String entered_pin = String(id(pin_input).state).substring(0, 4);
+          if (entered_pin == "1234") {
+            it.get_variable(id(pin_wrong_var)).set_value(false)
+            it.get_variable(id(alarm_timer_var)).set_value("")
+            it.get_variable(id(pin_entered_var)).set_value(false)
+            id(alarm_switch).turn_off()
+            menu.set_current("Main")
+          } else {
+            it.get_variable(id(pin_wrong_var)).set_value(true)
+            keypad.clear()
+            keypad.set_cursor(0, 0)
+            keypad.print("Wrong PIN!")
+            it.get_variable(id(pin_entered_var)).set_value(false)
+          }
+  - text: "NFC Registration"
+    variables:
+      - id: nfc_tag_added_var
+        name: "NFC Tag Added"
+        type: "bool"
+    actions:
+      - lambda: |
+          it.get_variable(id(nfc_tag_added_var)).set_value(false)
+          mfrc522.init()
+          mfrc522.wait_for_tag()
+          if (not mfrc522.is_new_card_present()) {
+            mfrc522.halt()
+            return;
+          }
+          auto uid = mfrc522.read_uid();
+          if (not uid.valid) {
+            mfrc522.halt()
+            return;
+          }
+          for (auto tag : id(nfc_tag)) {
+            if (tag.uid == uid.uid) {
+              mfrc522.halt
+              return;
+            }
+          }
+          it.get_variable(id(nfc_tag_added_var)).set_value(true)
+          auto new_tag = id(nfc_tag).make_new();
+          new_tag->uid = uid.uid;
+          new_tag->name = "NFC Tag " + String(id(nfc_tag).size() + 1);
+          menu.set_current("Main")
+          mfrc522.halt()
+  - text: "NFC Deletion"
+    variables:
+      - id: nfc_tag_deleted_var
+        name: "NFC Tag Deleted"
+        type: "bool"
+      - id: nfc_tag_index_var
+        name: "NFC Tag Index"
+        type: "int"
+    actions:
+      - lambda: |
+          it.get_variable(id(nfc_tag_deleted_var)).set_value(false)
+          it.get_variable(id(nfc_tag_index_var)).set_value(0)
+          for (int i = 0; i < id(nfc_tag).size(); i++) {
+            Serial.printf("NFC Tag %d: %s\n", i + 1, id(nfc_tag)[i]->name.c_str());
+          }
+          keypad.clear()
+          keypad.set_cursor(0, 0)
+          keypad.print("Enter Tag #:")
+      - wait_until: nfc_tag_index_var
+      - lambda: |
+          int tag_index = id(nfc_tag_index_var).state;
+          if (tag_index >= 1 && tag_index <= id(nfc_tag).size()) {
+            id(nfc_tag).erase(id(nfc_tag).begin() + tag_index - 1);
+            it.get_variable(id(nfc_tag_deleted_var)).set_value(true)
+          }
+          menu.set_current("Main")
+  - text: "Door State"
+    variables:
+      - id: door_state_var
+        name: "Door State"
+        type: "string"
+    actions:
+      - lambda: |
+          String door_states;
+          for (int i = 0; i < 10; i++) {
+            auto pin_state = id(mcp).digital_read(i);
+            if (pin_state == LOW) {
+              door_states += String("Door ") + String(i + 1) + ": Open\n";
+            } else {
+              door_states += String("Door ") + String(i + 1) + ": Closed\n";
+            }
+          }
+          it.get_variable(id(door_state_var)).set_value(door_states)
+          menu.set_current("Door State")
+  - text: "Alarm Triggered"
+    variables:
+      - id: alarm_triggered_var
+        name: "Alarm Triggered"
+        type: "bool"
+    actions:
+      - lambda: |
+          it.get_variable(id(alarm_triggered_var)).set_value(false)
+          it.get_variable(id(pin_wrong_var)).set_value(false)
+          it.get_variable(id(alarm_timer_var)).set_value("")
+
+          auto alarm_time = homeassistant_time.now().strftime("%H:%M:%S");
+          String door_states;
+          for (int i = 0; i < 10; i++) {
+            auto pin_state = id(mcp).digital_read(i);
+            if (pin_state == LOW) {
+              door_states += String("Door ") + String(i + 1) + ": Open\n";
+            }
+          }
+          String message = String("Alarm Triggered at ") + alarm_time + "\n\n" + door_states;
+          auto notification = id(notify).make_call();
+          notification->message = message;
+          notification->title = "Alarm Triggered";
+          notification->icon = "mdi:shield-alert";
+          notification->color = "red";
+          notification->priority = "high";
+          notification->
+  - text: "Alarm PIN"
+    variables:
+      - id: pin_entered_var
+        name: "PIN Entered"
+        type: "string"
+    actions:
+      - lambda: |
+          it.get_variable(id(pin_entered_var)).set_value("")
+          keypad.clear()
+          keypad.set_cursor(0, 0)
+          keypad.print("Enter PIN:")
+      - wait_until: pin_entered_var
+      - lambda: |
+          String pin_entered = id(pin_entered_var).state;
+          if (pin_entered == id(alarm_pin)) {
+            it.get_variable(id(alarm_sounding_var)).set_value(false)
+            it.get_variable(id(pin_wrong_var)).set_value(false)
+            it.get_variable(id(alarm_triggered_var)).set_value(false)
+            it.get_variable(id(alarm_timer_var)).set_value("")
+            menu.set_current("Main")
+          } else {
+            it.get_variable(id(pin_wrong_var)).set_value(true)
+          }
+  - text: "PIN Wrong"
+    variables:
+      - id: pin_wrong_var
+        name: "PIN Wrong"
+        type: "bool"
+    actions:
+      - lambda: |
+          it.get_variable(id(pin_wrong_var)).set_value(false)
+          menu.set_current("PIN Wrong")
+  - text: "Alarm Sounding"
+    variables:
+      - id: alarm_sounding_var
+        name: "Alarm Sounding"
+        type: "bool"
+    actions:
+      - lambda: |
+          it.get_variable(id(alarm_sounding_var)).set_value(false)
+          auto notification = id(notify).make_call();
+          notification->message = "Alarm Sounding!";
+          notification->title = "Alarm Sounding";
+          notification->icon = "mdi:shield-alert";
+          notification->color = "red";
+          notification->priority = "high";
+          notification->repeat = true;
+          notification->repeat_interval = 5s;
+          notification->sound = "default";
+          notification->vibrate = "short";
+          notification->sound_volume = 0.7;
+          notification->volume = 1.0;
+          notification->timestamp = homeassistant_time.now();
+          notification->extra_fields = {
+            {"Door 1", id(mcp).digital_read(0) == LOW ? "Open" : "Closed"},
+            {"Door 2", id(mcp).digital_read(1) == LOW ? "Open" : "Closed"},
+            {"Door 3", id(mcp).digital_read(2) == LOW ? "Open" : "Closed"},
+            {"Door 4", id(mcp).digital_read(3) == LOW ? "Open" : "Closed"},
+            {"Door 5", id(mcp).digital_read(4) == LOW ? "Open" : "Closed"},
+            {"Door 6", id(mcp).digital_read(5) == LOW ? "Open" : "Closed"},
+            {"Door 7", id(mcp).digital_read(6) == LOW ? "Open" : "Closed"},
+            {"Door 8", id(mcp).digital_read(7) == LOW ? "Open" : "Closed"},
+            {"Door 9", id(mcp).digital_read(8) == LOW ? "Open" : "Closed"},
+            {"Door 10", id(mcp).digital_read(9) == LOW ? "Open" : "Closed"}
+          };
+          menu.set_current("Alarm Sounding")
+  - text: "Alarm Timer"
+    variables:
+      - id: alarm_timer_var
+        name: "Alarm Timer"
+        type: "string"
+    actions:
+      - lambda: |
+          it.get_variable(id(alarm_timer_var)).set_value
+          String alarm_time_left = "";
+          if (id(alarm_time_left_var).state.length() > 0) {
+            int alarm_seconds_left = id(alarm_time_left_var);
+            int minutes_left = alarm_seconds_left / 60;
+            int seconds_left = alarm_seconds_left % 60;
+            alarm_time_left = String(minutes_left) + ":" + String(seconds_left < 10 ? "0" : "") + String(seconds_left);
+          }
+          it.get_variable(id(alarm_timer_var)).set_value(alarm_time_left)
+          menu.set_current("Alarm Timer")
+      - wait_until: alarm_time_left_var
+      - lambda: |
+          it.get_variable(id(alarm_timer_var)).set_value("")
+          menu.set_current("Main")
+
+# Hier wird der Alarm-Timer-Dialog definiert, der den Countdown für die verbleibende Zeit anzeigt, 
+# bis der Alarm ausgelöst wird. Die verbleibende Zeit wird von einer Variable (alarm_time_left_var) gelesen, 
+# die regelmäßig von einem Lambda-Block aktualisiert wird, der den Countdown herunterzählt.
+
+  - text: "PIN Wrong"
+    actions:
+      - lambda: |
+          keypad.clear()
+          keypad.set_cursor(0, 0)
+          keypad.print("Wrong PIN!")
+          delay(1000)
+          keypad.clear()
+          it.get_variable(id(pin_entered_var)).set_value("")
+          menu.set_current("Enter PIN")
+
+# Hier wird der "Wrong PIN"-Dialog definiert, der angezeigt wird, wenn ein falscher PIN eingegeben wird.
+
+  - text: "Alarm Sounding"
+    actions:
+      - lambda: |
+          auto notification = id(notify).make_call();
+          notification->message = "Alarm Sounding!";
+          notification->title = "Alarm Sounding";
+          notification->icon = "mdi:shield-alert";
+          notification->color = "red";
+          notification->priority = "high";
+          notification->repeat = true;
+          notification->repeat_interval = 5s;
+          notification->sound = "default";
+          notification->vibrate = "short";
+          notification->sound_volume = 0.7;
+          notification->volume = 1.0;
+          notification->timestamp = homeassistant_time.now();
+          notification->extra_fields = {
+            {"Door 1", id(mcp).digital_read(0) == LOW ? "Open" : "Closed"},
+            {"Door 2", id(mcp).digital_read(1) == LOW ? "Open" : "Closed"},
+            {"Door 3", id(mcp).digital_read(2) == LOW ? "Open" : "Closed"},
+            {"Door 4", id(mcp).digital_read(3) == LOW ? "Open" : "Closed"},
+            {"Door 5", id(mcp).digital_read(4) == LOW ? "Open" : "Closed"},
+            {"Door 6", id(mcp).digital_read(5) == LOW ? "Open" : "Closed"},
+            {"Door 7", id(mcp).digital_read(6) == LOW ? "Open" : "Closed"},
+            {"Door 8", id(mcp).digital_read(7) == LOW ? "Open" : "Closed"},
+            {"Door 9", id(mcp).digital_read(8) == LOW ? "Open" : "Closed"},
+            {"Door 10", id(mcp).digital_read(9) == LOW ? "Open" : "Closed"}
+          };
+          delay(1000)
+          menu.set_current("Enter PIN")
+
+#Hier wird der "Alarm Sounding"-Dialog definiert, der angezeigt wird, wenn der Alarm ausgelöst wurde
+
+  - text: "Alarm Deactivated"
+    actions:
+      - lambda: |
+          auto notification = id(notify).make_call();
+          notification->message = "Alarm Deactivated";
+          notification->title = "Alarm Deactivated";
+          notification->icon = "mdi:shield-check";
+          notification->color = "green";
+          notification->priority = "low";
+          notification->repeat = false;
+          notification->sound = "default";
+          notification->vibrate = "short";
+          notification->sound_volume = 0.7;
+          notification->volume = 1.0;
+          notification->timestamp = homeassistant_time.now();
+          delay(1000)
+          menu.set_current("Main")
+
+# Hier wird der "Alarm Deactivated"-Dialog definiert, der angezeigt wird, wenn der Alarm erfolgreich deaktiviert wurde.
+
+- id: alarm_time_left_var
+  type: int
+  initial_value: 0
+  restore_value: true
+
+# Hier wird die Variable alarm_time_left_var definiert, die den Countdown für die verbleibende Zeit bis zum Alarm speichert.
+
+- id: pin_entered_var
+  type: string
+  initial_value: ""
+  restore_value: true
+
+# Hier wird die Variable pin_entered_var definiert, die den vom Benutzer eingegebenen PIN speichert.
+
+- id: alarm_timer_var
+  type: string
+  initial_value: ""
+  restore_value: true
+
+# Hier wird die Variable alarm_timer_var definiert, die den Countdown für den Alarm-Timer speichert.
+
+- platform: homeassistant
+  name: "Alarm Status"
+  id: alarm_status
+  icon: "mdi:shield-home"
+  device_class: safety
+
+# Hier wird ein Home Assistant-Sensor namens "Alarm Status" definiert, der den aktuellen Zustand der Alarmanlage anzeigt.
+
+- platform: homeassistant
+  name: "Alarm Timer"
+  id: alarm_timer
+  icon: "mdi:timer-outline"
+  device_class: timestamp
+
+# Hier wird ein Home Assistant-Sensor namens "Alarm Timer" definiert, der den Countdown für den Alarm-Timer anzeigt.
+
+- platform: template
+  sensors:
+    door_1:
+      value_template: "{{ 'Open' if mcp.door_1 == LOW else 'Closed' }}"
+      icon_template: "{{ 'mdi:door-open' if mcp.door_1 == LOW else 'mdi:door-closed' }}"
+      device_class: door
+    door_2:
+      value_template: "{{ 'Open' if mcp.door_2 == LOW else 'Closed' }}"
+      icon_template: "{{ 'mdi:door-open' if mcp.door_2 == LOW else 'mdi:door-closed' }}"
+      device_class: door
+    door_3:
+      value_template: "{{ 'Open' if mcp.door_3 == LOW else 'Closed' }}"
+      icon_template: "{{ 'mdi:door-open' if mcp.door_3 == LOW else 'mdi:door-closed' }}"
+      device_class: door
+    door_4:
+      value_template: "{{ 'Open' if mcp.door_4 == LOW else 'Closed' }}"
+      icon_template: "{{ 'mdi:door-open' if mcp.door_4 == LOW else 'mdi:door-closed' }}"
+      device_class: door
+    door_5:
+      value_template: "{{ 'Open' if mcp.door_5 == LOW else 'Closed' }}"
+      icon_template: "{{ 'mdi:door-open' if mcp.door_5 == LOW else
+      'mdi:door-closed' }}"
+      device_class: door
+    door_6:
+      value_template: "{{ 'Open' if mcp.door_6 == LOW else 'Closed' }}"
+      icon_template: "{{ 'mdi:door-open' if mcp.door_6 == LOW else 'mdi:door-closed' }}"
+      device_class: door
+    door_7:
+      value_template: "{{ 'Open' if mcp.door_7 == LOW else 'Closed' }}"
+      icon_template: "{{ 'mdi:door-open' if mcp.door_7 == LOW else 'mdi:door-closed' }}"
+      device_class: door
+    door_8:
+      value_template: "{{ 'Open' if mcp.door_8 == LOW else 'Closed' }}"
+      icon_template: "{{ 'mdi:door-open' if mcp.door_8 == LOW else 'mdi:door-closed' }}"
+      device_class: door
+    door_9:
+      value_template: "{{ 'Open' if mcp.door_9 == LOW else 'Closed' }}"
+      icon_template: "{{ 'mdi:door-open' if mcp.door_9 == LOW else 'mdi:door-closed' }}"
+      device_class: door
+    door_10:
+      value_template: "{{ 'Open' if mcp.door_10 == LOW else 'Closed' }}"
+      icon_template: "{{ 'mdi:door-open' if mcp.door_10 == LOW else 'mdi:door-closed' }}"
+      device_class: door
+
+# Hier werden die Sensoren für die Türkontakte definiert, die den aktuellen Status der Türen anzeigen. 
+# Dazu wird der Wert des MCP23017 I/O Expanders abgefragt.
+
+- platform: keypad
+  id: alarm_keypad
+  rows:
+    - [1, 2, 3]
+    - [4, 5, 6]
+    - [7, 8, 9]
+    - ["*", 0, "#"]
+  columns:
+    - GPIO25
+    - GPIO26
+    - GPIO27
+  on_key_press:
+    then:
+      - lambda: |
+          auto keypad = id(alarm_keypad);
+          auto keypad_key = keypad->get_key();
+          auto keypad_key_str = String(keypad_key);
+
+          auto pin_entered = id(pin_entered_var);
+          auto pin_entered_str = String(pin_entered->state);
+
+          if (keypad_key == "*") {
+            pin_entered->set_value("");
+          } else if (keypad_key == "#") {
+            if (pin_entered_str.length() == 4) {
+              if (pin_entered_str == alarm_pin) {
+                if (alarm_active) {
+                  id(alarm_active).turn_off();
+                  id(alarm_timer_var).publish_state("");
+                  id(alarm_time_left_var).publish_state(0);
+                  keypad->set_text("");
+                  id(pin_entered_var).publish_state("");
+                  auto notification = id(notify).make_call();
+                  notification->message = "Alarm Deactivated";
+                  notification->title = "Alarm Deactivated";
+                  notification->icon = "mdi:shield-check";
+                  notification->color = "green";
+                  notification->priority = "low";
+                  notification->repeat = false;
+                  notification->sound = "default";
+                  notification->vibrate = "short";
+                  notification->sound_volume = 0.7;
+                  notification->volume = 1.0;
+                  notification->timestamp = homeassistant_time.now();
+                  delay(1000)
+                  menu.set_current("Main")
+                } else {
+                  id(alarm_active).turn
+platform: keypad
+id: alarm_keypad
+rows:
+- [1, 2, 3]
+- [4, 5, 6]
+- [7, 8, 9]
+- ["*", 0, "#"]
+columns:
+- GPIO25
+- GPIO26
+- GPIO27
+on_key_press:
+then:
+- lambda: |
+auto keypad = id(alarm_keypad);
+auto keypad_key = keypad->get_key();
+auto keypad_key_str = String(keypad_key);
+        auto pin_entered = id(pin_entered_var);
+        auto pin_entered_str = String(pin_entered->state);
+
+        if (keypad_key == "*") {
+          pin_entered->set_value("");
+        } else if (keypad_key == "#") {
+          if (pin_entered_str.length() == 4) {
+            if (pin_entered_str == alarm_pin) {
+              if (alarm_active) {
+                id(alarm_active).turn_off();
+                id(alarm_timer_var).publish_state("");
+                id(alarm_time_left_var).publish_state(0);
+                keypad->set_text("");
+                id(pin_entered_var).publish_state("");
+                auto notification = id(notify).make_call();
+                notification->message = "Alarm Deactivated";
+                notification->title = "Alarm Deactivated";
+                notification->icon = "mdi:shield-check";
+                notification->color = "green";
+                notification->priority = "low";
+                notification->repeat = false;
+                notification->sound = "default";
+                notification->vibrate = "short";
+                notification->sound_volume = 0.7;
+                notification->volume = 1.0;
+                notification->timestamp = homeassistant_time.now();
+                delay(1000);
+                menu.set_current("Main");
+              } else {
+                id(alarm_active).turn_on();
+                id(alarm_timer_var).publish_state(homeassistant_time);
+                id(alarm_time_left_var).publish_state(alarm_time);
+                keypad->set_text("");
+                id(pin_entered_var).publish_state("");
+                auto notification = id(notify).make_call();
+                notification->message = "Alarm Activated";
+                notification->title = "Alarm Activated";
+                notification->icon = "mdi:shield-home";
+                notification->color = "red";
+                notification->priority = "high";
+                notification->repeat = false;
+                notification->sound = "default";
+                notification->vibrate = "long";
+                notification->sound_volume = 1.0;
+                notification->volume = 1.0;
+                notification->timestamp = homeassistant_time.now();
+                delay(1000);
+                menu.set_current("Main");
+              }
+            } else {
+              keypad->set_text("");
+              id(pin_entered_var).publish_state("");
+              auto notification = id(notify).make_call();
+              notification->message = "Invalid PIN";
+              notification->title = "Invalid PIN";
+              notification->icon = "mdi:shield-off-outline";
+              notification->color = "yellow";
+              notification->priority = "low";
+              notification->repeat = false;
+              notification->sound = "default";
+              notification->vibrate = "short";
+              notification->sound_volume = 0.7;
+              notification->volume = 1.0;
+              notification->timestamp = homeassistant_time.now();
+              delay(1000);
+              menu.set_current("Main");
+            }
+          } else if (keypad_key_str.toInt() >= 0 && keypad_key_str.toInt() <= 9) {
+            pin_entered->set_value(pin_entered_str + keypad_key_str);
+            keypad->set_text(String(pin_entered->state.length(),
+platform: nfc
+on_tag:
+  then:
+    - lambda: |
+        auto tag_id = id(nfc).tag().id();
+
+        auto tag_found = false;
+        for (auto tag : nfc_tags) {
+          if (tag == tag_id) {
+            tag_found = true;
+            break;
+          }
+        }
+
+        if (tag_found) {
+          auto keypad = id(alarm_keypad);
+          if (alarm_active) {
+            id(alarm_active).turn_off();
+            id(alarm_timer_var).publish_state("");
+            id(alarm_time_left_var).publish_state(0);
+            keypad->set_text("");
+            auto notification = id(notify).make_call();
+            notification->message = "Alarm Deactivated";
+            notification->title = "Alarm Deactivated";
+            notification->icon = "mdi:shield-check";
+            notification->color = "green";
+            notification->priority = "low";
+            notification->repeat = false;
+            notification->sound = "default";
+            notification->vibrate = "short";
+            notification->sound_volume = 0.7;
+            notification->volume = 1.0;
+            notification->timestamp = homeassistant_time.now();
+            delay(1000);
+            menu.set_current("Main");
+          } else {
+            id(alarm_active).turn_on();
+            id(alarm_timer_var).publish_state(homeassistant_time);
+            id(alarm_time_left_var).publish_state(alarm_time);
+            keypad->set_text("");
+            auto notification = id(notify).make_call();
+            notification->message = "Alarm Activated";
+            notification->title = "Alarm Activated";
+            notification->icon = "mdi:shield-home";
+            notification->color = "red";
+            notification->priority = "high";
+            notification->repeat = false;
+            notification->sound = "default";
+            notification->vibrate = "long";
+            notification->sound_volume = 1.0;
+            notification->volume = 1.0;
+            notification->timestamp = homeassistant_time.now();
+            delay(1000);
+            menu.set_current("Main");
+          }
+        } else {
+          auto notification = id(notify).make_call();
+          notification->message = "Invalid Tag";
+          notification->title = "Invalid Tag";
+          notification->icon = "mdi:shield-off-outline";
+          notification->color = "yellow";
+          notification->priority = "low";
+          notification->repeat = false;
+          notification->sound = "default";
+          notification->vibrate = "short";
+          notification->sound_volume = 0.7;
+          notification->volume = 1.0;
+          notification->timestamp = homeassistant_time.now();
+          delay(1000);
+          menu.set_current("Main");
+        }
+menu:
+  - id: main_menu
+    name: "Main"
+    menu:
+      - id: arm_alarm
+        name: "Arm Alarm"
+        lambda: |-
+          auto keypad = id(alarm_keypad);
+          auto alarm_status = id(alarm_active).state;
+          if (alarm_status) {
+            keypad->set_text("");
+            menu.set_current("Deactivate Alarm");
+          } else {
+            menu.set_current("Enter PIN");
+          }
+      - id: deactivate_alarm
+        name: "Deactivate Alarm"
+        lambda: |-
+          menu.set_current("Enter PIN");
+      - id: enter_pin
+        name: "Enter PIN"
+        lambda: |-
+          auto keypad = id(alarm_keypad);
+          keypad->set_text("");
+      - id: settings
+        name: "Settings"
+        menu:
+          - id: add_tag
+            name: "Add Tag"
+            lambda: |-
+              auto tag_id = id(nfc).tag().id();
+              nfc_tags.push_back(tag_id);
+              auto notification = id(notify).make_call();
+              notification->message = "NFC Tag added";
+              notification->title = "NFC Tag added";
+              notification->icon = "mdi:nfc-tap";
+              notification->color = "green";
+              notification->priority = "low";
+              notification->repeat = false;
+              notification->sound = "default";
+              notification->vibrate = "short";
+              notification->sound_volume = 0.7;
+              notification->volume = 1.0;
+              notification->timestamp = homeassistant_time.now();
+              delay(1000);
+              menu.set_current("Settings")
+          - id: remove_tag
+            name: "Remove Tag"
+            lambda: |-
+              auto tag_id = id(nfc).tag().id();
+              auto tag_found = false;
+              for (auto it = nfc_tags.begin(); it != nfc_tags.end(); ++it) {
+                if (*it == tag_id) {
+                  tag_found = true;
+                  nfc_tags.erase(it);
+                  break;
+                }
+              }
+              if (tag_found) {
+                auto notification = id(notify).make_call();
+                notification->message = "NFC Tag removed";
+                notification->title = "NFC Tag removed";
+                notification->icon = "mdi:nfc-tap";
+                notification->color = "green";
+                notification->priority = "low";
+                notification->repeat = false;
+                notification->sound = "default";
+                notification->vibrate = "short";
+                notification->sound_volume = 0.7;
+                notification->volume = 1.0;
+                notification->timestamp = homeassistant_time.now();
+                delay(1000);
+              } else {
+                auto notification = id(notify).make_call();
+                notification->message = "NFC Tag not found";
+                notification->title = "NFC Tag not found";
+                notification->icon = "mdi:nfc-tap";
+                notification->color = "yellow";
+                notification->priority = "low";
+                notification->repeat = false;
+                notification->sound = "default";
+                notification->vibrate = "short";
+                notification->sound_volume = 0.7;
+                notification->volume = 1.0;
+                notification->timestamp = homeassistant_time.now();
+                delay(1000);
+              }
+              menu.set_current("Settings")
+          - id: clear_tags
+            name: "Clear Tags"
+            lambda: |-
+              nfc_tags.clear();
+              auto notification = id(notify).make_call();
+              notification->message = "NFC Tags cleared";
+              notification->title = "NFC
+Tag cleared";
+notification->icon = "mdi:nfc-tap";
+notification->color = "green";
+notification->priority = "low";
+notification->repeat = false;
+notification->sound = "default";
+notification->vibrate = "short";
+notification->sound_volume = 0.7;
+notification->volume = 1.0;
+notification->timestamp = homeassistant_time.now();
+delay(1000);
+menu.set_current("Settings")
+
+nfc:
+  - id: nfc_module
+    on_tag:
+      then:
+        - if:
+            condition:
+              lambda: |-
+                auto tag_id = id(nfc_module).tag().id();
+                return std::find(nfc_tags.begin(), nfc_tags.end(), tag_id) != nfc_tags.end();
+            then:
+              - lambda: |-
+                  auto keypad = id(alarm_keypad);
+                  auto alarm_status = id(alarm_active).state;
+                  if (!alarm_status) {
+                    return;
+                  }
+                  keypad->set_text("");
+                  menu.set_current("Deactivate Alarm");
+              - delay: 1000
+              - logger.log: "NFC tag detected"
+            else:
+              - logger.log: "Unknown NFC tag detected"
+
+
+# Das war der gesamte Code. Natürlich müssen die Einrichtung des Display- und des MCP23017-Moduls sowie die Konfiguration 
+# des Ethernet-Adapters noch ergänzt werden. Auch das Anlegen von Sensoren und Automatisierungen fehlt noch, 
+# aber der Grundgerüst für die Alarmanlage ist mit diesem Code gegeben.
