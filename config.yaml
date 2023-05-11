@@ -38,7 +38,7 @@ display:
 # Keypad
 keypad:
   rows: 4
-  columns: 4
+  columns: 3
   pin_row_1: GPIO33
   pin_row_2: GPIO25
   pin_row_3: GPIO26
@@ -46,7 +46,7 @@ keypad:
   pin_col_1: GPIO14
   pin_col_2: GPIO12
   pin_col_3: GPIO13
-  pin_col_4: GPIO15
+
 
 # NFC Reader
 spi:
