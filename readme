@@ -1,11 +1,26 @@
-This alarm system represents a simple and compact solution that has been implemented for ESPhome and Homeassistant. The entire code was generated with the support of ChatGPT-4.
+About:
+This repository hosts the code and documentation for a simple and compact alarm system, 
+specifically designed for integration with ESPhome and Homeassistant. 
+The project leverages various hardware components, including an Olimex ESP32-POE-ISO, 
+an OLED display, a 4x3 keypad matrix, an NFC Reader, and door contacts managed with a MCP23017 I/O expander.
 
-The recommended hardware for this project includes:
+Key Features:
+Connectivity: Utilizes LAN connection.
+User Interface: Features a 128x32 OLED 0.91" I2C display for status information.
+Security: Includes an NFC reader (model mfrc522) and door contacts for comprehensive security.
 
-Olimex ESP32-POE-ISO
-128x32 OLED 0.91" I2C (Resolution: 128x32)
-4x3 Keypad Matrix (1, 2, 3, 4, 5, 6, 7, 8, 9, 0, *, #)
-NFC Reader, specific model: mfrc522
-Door contacts, controlled via GPIO with an MCP23017 I/O expander
+Future goals:
+One of my ambitious goals for the future is to seamlessly integrate the keypad, OLED, and LEDs into a Jung LS 990 blind cover. 
+Thus, the project should be in line with the existing switch program in the house. 
+Key aspects of this goal include:
+- Optimizing the Design: 
+    Ensuring that the keypad, OLED, and LEDs fit into the Jung LS 990 blind cover without losing functionality.
+- Visual Harmony: 
+    Achieving a look that complements the existing fixtures and aesthetics.
 
-Please note that the code has not been verified, and its use is at your own risk.
+By aligning with the current switch design, I aim to create a coherent and visually appealing integration 
+that adds both functionality and style to the home environment.
+
+
+Note:
+The entire codebase has been generated with the assistance of ChatGPT-4, and it has not been verified. Use it at your own risk.
