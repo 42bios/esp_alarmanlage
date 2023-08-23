@@ -9,18 +9,6 @@ Connectivity: Utilizes LAN connection.
 User Interface: Features a 128x32 OLED 0.91" I2C display for status information.
 Security: Includes an NFC reader (model mfrc522) and door contacts for comprehensive security.
 
-Future goals:
-One of my ambitious goals for the future is to seamlessly integrate the keypad, OLED, and LEDs into a Jung LS 990 blind cover. 
-Thus, the project should be in line with the existing switch program in the house. 
-Key aspects of this goal include:
-- Optimizing the Design: 
-    Ensuring that the keypad, OLED, and LEDs fit into the Jung LS 990 blind cover without losing functionality.
-- Visual Harmony: 
-    Achieving a look that complements the existing fixtures and aesthetics.
-
-By aligning with the current switch design, I aim to create a coherent and visually appealing integration 
-that adds both functionality and style to the home environment.
-
 
 Note:
 The entire codebase has been generated with the assistance of ChatGPT-4, and it has not been verified. Use it at your own risk.
