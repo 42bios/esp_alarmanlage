@@ -11,4 +11,4 @@ Security: Includes an NFC reader (model mfrc522) and door contacts for comprehen
 
 
 Note:
-The entire codebase has been generated with the assistance of ChatGPT-4, and it has not been verified. Use it at your own risk.
+The entire codebase has been generated with ChatGPT-4, and it has not been verified. Use it at your own risk.
