@@ -1,5 +1,11 @@
 ﻿# ESPHome Alarmanlage (bereinigte Basis)
 
+## Wichtiger Hinweis
+- Dieses Projekt wurde komplett mit OpenAI ChatGPT bzw. Codex erstellt.
+- Der Code ist ein Test, um zu zeigen, was mit KI moeglich ist.
+- Keine Gewaehr auf Korrektheit, Sicherheit oder Eignung fuer den produktiven Betrieb.
+- Verwendung auf eigene Gefahr.
+
 Dateien:
 - `alarmanlage.yaml`: Hauptkonfiguration
 - `secrets.example.yaml`: Beispiel fuer Secrets
