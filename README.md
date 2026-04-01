@@ -1,4 +1,4 @@
-﻿# ESPHome Alarm System (Clean Baseline)
+﻿# ESPHome Alarm System
 
 ## Important Notice
 - This project was created entirely with OpenAI ChatGPT and Codex.
