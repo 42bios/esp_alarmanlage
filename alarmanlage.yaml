@@ -1,0 +1,379 @@
+﻿substitutions:
+  device_name: alarmanlage
+  friendly_name: Alarmanlage
+  alarm_code: !secret alarm_code
+  nfc_tag_1: !secret nfc_tag_1
+  nfc_tag_2: !secret nfc_tag_2
+  # Wichtig: Pins passend zu deinem echten Verdrahtungsplan anpassen.
+  # Bei Ethernet sind RMII-Pins reserviert und nicht frei nutzbar.
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  min_version: 2025.6.0
+  project:
+    name: local.esp_alarmanlage
+    version: "1.0.0"
+  on_boot:
+    priority: -100
+    then:
+      - script.execute: refresh_leds
+
+esp32:
+  board: esp32-poe-iso
+  framework:
+    type: arduino
+
+logger:
+  baud_rate: 0
+
+api:
+
+ota:
+  - platform: esphome
+
+ethernet:
+  type: LAN8720
+  mdc_pin: GPIO23
+  mdio_pin: GPIO18
+  clk_mode: GPIO17_OUT
+  phy_addr: 0
+  power_pin: GPIO12
+
+web_server:
+  port: 80
+
+time:
+  - platform: homeassistant
+    id: ha_time
+
+i2c:
+  sda: GPIO32
+  scl: GPIO33
+  scan: true
+
+spi:
+  clk_pin: GPIO14
+  mosi_pin: GPIO13
+  miso_pin: GPIO39
+
+font:
+  - file: "gfonts://Roboto Mono"
+    id: oled_font
+    size: 8
+
+globals:
+  - id: alarm_armed
+    type: bool
+    restore_value: yes
+    initial_value: 'false'
+  - id: alarm_triggered
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: pin_buffer
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: last_event
+    type: std::string
+    restore_value: no
+    initial_value: '"Bereit"'
+  - id: failed_attempts
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: lockout_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: '0'
+  - id: entry_delay_active
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+output:
+  - platform: gpio
+    pin:
+      mcp23xxx: mcp_hub
+      number: 8
+      mode:
+        output: true
+    id: led_armed_out
+  - platform: gpio
+    pin:
+      mcp23xxx: mcp_hub
+      number: 9
+      mode:
+        output: true
+    id: led_disarmed_out
+
+light:
+  - platform: binary
+    id: led_armed
+    name: "${friendly_name} LED Armed"
+    output: led_armed_out
+  - platform: binary
+    id: led_disarmed
+    name: "${friendly_name} LED Disarmed"
+    output: led_disarmed_out
+
+switch:
+  - platform: gpio
+    id: siren
+    name: "${friendly_name} Sirene"
+    pin:
+      mcp23xxx: mcp_hub
+      number: 10
+      mode:
+        output: true
+    restore_mode: ALWAYS_OFF
+
+button:
+  - platform: template
+    name: "${friendly_name} Alarm Toggle"
+    on_press:
+      - script.execute: toggle_alarm_state
+  - platform: template
+    name: "${friendly_name} Alarm Arm"
+    on_press:
+      - script.execute: arm_alarm
+  - platform: template
+    name: "${friendly_name} Alarm Disarm"
+    on_press:
+      - script.execute: disarm_alarm
+  - platform: template
+    name: "${friendly_name} Alarm Reset Trigger"
+    on_press:
+      - lambda: |-
+          id(alarm_triggered) = false;
+          id(entry_delay_active) = false;
+          id(last_event) = "Alarmstatus zurueckgesetzt";
+      - switch.turn_off: siren
+
+script:
+  - id: refresh_leds
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return id(alarm_armed);'
+          then:
+            - light.turn_on: led_armed
+            - light.turn_off: led_disarmed
+          else:
+            - light.turn_off: led_armed
+            - light.turn_on: led_disarmed
+
+  - id: arm_alarm
+    mode: restart
+    then:
+      - lambda: |-
+          id(alarm_armed) = true;
+          id(alarm_triggered) = false;
+          id(entry_delay_active) = false;
+          id(pin_buffer).clear();
+          id(last_event) = "Alarm aktiviert";
+      - switch.turn_off: siren
+      - script.execute: refresh_leds
+
+  - id: disarm_alarm
+    mode: restart
+    then:
+      - lambda: |-
+          id(alarm_armed) = false;
+          id(alarm_triggered) = false;
+          id(entry_delay_active) = false;
+          id(pin_buffer).clear();
+          id(last_event) = "Alarm deaktiviert";
+      - switch.turn_off: siren
+      - script.execute: refresh_leds
+
+  - id: toggle_alarm_state
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return id(alarm_armed);'
+          then:
+            - script.execute: disarm_alarm
+          else:
+            - script.execute: arm_alarm
+
+  - id: trigger_alarm_now
+    mode: restart
+    then:
+      - lambda: |-
+          id(alarm_triggered) = true;
+          id(entry_delay_active) = false;
+          id(last_event) = "ALARM AUSGELOEST";
+      - switch.turn_on: siren
+
+  - id: start_entry_delay
+    mode: restart
+    then:
+      - lambda: |-
+          id(entry_delay_active) = true;
+          id(last_event) = "Entry delay 30s";
+      - delay: 30s
+      - if:
+          condition:
+            lambda: 'return id(alarm_armed) && id(entry_delay_active);'
+          then:
+            - script.execute: trigger_alarm_now
+          else:
+            - lambda: |-
+                id(entry_delay_active) = false;
+
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x32"
+    address: 0x3C
+    update_interval: 500ms
+    lambda: |-
+      it.printf(0, 0, id(oled_font), "Alarm: %s", id(alarm_armed) ? "AN" : "AUS");
+      std::string masked(id(pin_buffer).size(), '*');
+      it.printf(0, 10, id(oled_font), "PIN: %s", masked.c_str());
+      std::string line = id(last_event);
+      if (line.size() > 21) {
+        line = line.substr(0, 21);
+      }
+      it.printf(0, 21, id(oled_font), "%s", line.c_str());
+
+mcp23017:
+  - id: mcp_hub
+    address: 0x20
+
+binary_sensor:
+  - platform: gpio
+    name: "${friendly_name} Tuer 1"
+    pin:
+      mcp23xxx: mcp_hub
+      number: 0
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    on_press:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(alarm_armed);'
+            then:
+              - script.execute: start_entry_delay
+    filters:
+      - delayed_on: 50ms
+      - delayed_off: 50ms
+
+  - platform: gpio
+    name: "${friendly_name} Tuer 2"
+    pin:
+      mcp23xxx: mcp_hub
+      number: 1
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    on_press:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(alarm_armed);'
+            then:
+              - script.execute: start_entry_delay
+    filters:
+      - delayed_on: 50ms
+      - delayed_off: 50ms
+
+  - platform: template
+    name: "${friendly_name} Armed"
+    lambda: 'return id(alarm_armed);'
+    update_interval: 1s
+
+  - platform: template
+    name: "${friendly_name} Triggered"
+    lambda: 'return id(alarm_triggered);'
+    update_interval: 1s
+
+  - platform: template
+    name: "${friendly_name} Entry Delay"
+    lambda: 'return id(entry_delay_active);'
+    update_interval: 1s
+
+matrix_keypad:
+  id: keypad
+  rows:
+    - pin: GPIO2
+    - pin: GPIO4
+    - pin: GPIO16
+    - pin: GPIO5
+  columns:
+    - pin: GPIO34
+    - pin: GPIO35
+    - pin: GPIO36
+  keys: "123456789*0#"
+  has_diodes: false
+  on_key:
+    then:
+      - lambda: |-
+          const uint32_t now = millis();
+          if (now < id(lockout_until_ms)) {
+            id(last_event) = "Tastatur gesperrt";
+            return;
+          }
+
+          if (x >= '0' && x <= '9') {
+            if (id(pin_buffer).size() < 8) {
+              id(pin_buffer).push_back(x);
+            }
+            id(last_event) = "PIN Eingabe";
+            return;
+          }
+
+          if (x == '*') {
+            id(pin_buffer).clear();
+            id(last_event) = "Eingabe geloescht";
+            return;
+          }
+
+          if (x == '#') {
+            if (id(pin_buffer) == std::string("${alarm_code}")) {
+              id(failed_attempts) = 0;
+              id(toggle_alarm_state).execute();
+            } else {
+              id(failed_attempts) += 1;
+              id(pin_buffer).clear();
+              id(last_event) = "Falscher PIN";
+              if (id(failed_attempts) >= 3) {
+                id(lockout_until_ms) = now + 30000;
+                id(failed_attempts) = 0;
+                id(last_event) = "Sperre 30s";
+              }
+            }
+            return;
+          }
+
+rc522_spi:
+  cs_pin: GPIO15
+  update_interval: 1s
+  on_tag:
+    then:
+      - lambda: |-
+          if (x == std::string("${nfc_tag_1}") || x == std::string("${nfc_tag_2}")) {
+            id(toggle_alarm_state).execute();
+            id(last_event) = "NFC akzeptiert";
+          } else {
+            id(last_event) = "NFC unbekannt";
+          }
+
+text_sensor:
+  - platform: template
+    name: "${friendly_name} Last Event"
+    lambda: 'return id(last_event);'
+    update_interval: 1s
+
+interval:
+  - interval: 10s
+    then:
+      - script.execute: refresh_leds
+
