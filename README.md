@@ -1,7 +1,7 @@
 # ESPHome Alarm System
 
 ## Important Notice
-- This project was created with the help of OpenAI ChatGPT and Codex.
+- This project was created with the help of Anthropic's Claude (Claude Code).
 - The code is an experiment to demonstrate what AI-assisted development can build.
 - No warranty is provided for correctness, safety, or production readiness.
 - Use at your own risk.

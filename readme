@@ -6,7 +6,7 @@ a second MCP23017, an RC522 NFC reader, and door contacts connected through a fi
 I/O expander.
 
 Important Notice
-This project was created entirely with OpenAI ChatGPT and Codex.
-The code is an experiment to demonstrate what AI can build.
+This project was created with the help of Anthropic's Claude (Claude Code).
+The code is an experiment to demonstrate what AI-assisted development can build.
 No warranty is provided for correctness, safety, or fitness for production use.
 Use at your own risk.
