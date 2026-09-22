@@ -1,7 +1,9 @@
 ﻿About
 This repository contains a compact ESPHome alarm system concept for Home Assistant integration.
-It targets hardware such as an Olimex ESP32-POE-ISO, a 128x32 OLED display, a 4x3 keypad,
-an RC522 NFC reader, and door contacts connected through an MCP23017 I/O expander.
+It targets hardware such as an Olimex ESP32-POE-ISO, a 128x32 OLED display, a custom keypad
+built from 12 individual pushbuttons (digits 0-9 plus dedicated ARM/DISARM buttons) wired to
+a second MCP23017, an RC522 NFC reader, and door contacts connected through a first MCP23017
+I/O expander.
 
 Important Notice
 This project was created entirely with OpenAI ChatGPT and Codex.
