@@ -54,9 +54,10 @@ plate replacing the switch insert.
   **engraved**, not cut through — better sealed against dust/moisture, and
   touch sensitivity works fine through 2-3mm acrylic/PMMA (adjust the
   MPR121 touch threshold in the ESPHome config if it's too sensitive/numb).
-- **4 status LEDs** (Armed / Disarmed / Alarm / Aktiv) still need an actual
-  through-hole or a thinned diffuser window — unlike the touch zones, light
-  has to get out.
+- **4 status LEDs** (Armed / Disarmed / Alarm / Aktiv) as tiny 0.8mm
+  pinholes, MacBook sleep-LED style — nearly invisible when off, a soft
+  glow when on. SMD LED mounted as close as possible behind the pinhole
+  (0.5-1mm gap), unlike the touch zones these still need a real through-hole.
 - No OLED and no NFC reader on this panel: a single LS990 gang (~50x50mm
   usable) is too small to fit a display or an RC522 antenna alongside 12
   touch zones. Status is shown on the Home Assistant dashboard/app instead;

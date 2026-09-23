@@ -12,8 +12,11 @@
     Materialstaerke fuer kapazitives Touch durch Acryl/PMMA: ~2-3mm empfohlen
     (dicker = weniger empfindlich, MPR121-Schwellwert ggf. anpassen).
 
+    LEDs: MacBook-Style Pinholes (0.8mm Durchmesser) statt sichtbarer
+    Lochkreise - siehe Kommentar bei der LED-Leiste weiter unten.
+
     Layer:
-      - Rote Linien (class=cut)   -> Laser: Schneiden (Aussenkontur, LED-Loecher)
+      - Rote Linien (class=cut)   -> Laser: Schneiden (Aussenkontur, LED-Pinholes)
       - Blaue Linien (class=etch) -> Laser: Gravur (Touch-Symbole/Zahlen + Zonenmarkierung, NICHT durchschneiden)
   -->
   <style>
@@ -79,20 +82,23 @@
   </g>
 
   <!--
-    LED-Leiste oben im Rahmenfeld: 4x 3mm LEDs (Armed / Disarmed / Alarm / Aktiv).
-    Diese bleiben ECHTE Durchbrueche (cut) - LEDs muessen durchscheinen, anders
-    als die nur gravierten Touch-Zonen. Alternativ: nicht durchschneiden,
-    sondern nur duenn "gegenschleifen" (Diffusor-Fenster) - dann als etch statt
-    cut lasern und mit Schleifpapier/2 Durchgaengen testen.
+    LED-Leiste oben im Rahmenfeld: 4x winzige Pinhole-LEDs (Armed / Disarmed /
+    Alarm / Aktiv) im Stil der alten MacBook Sleep-/Batterie-LED: ein sehr
+    kleines Loch (hier 0.4mm Radius = 0.8mm Durchmesser), fast unsichtbar
+    wenn aus, dezentes Glimmen wenn an. Dahinter sitzt eine SMD-LED so nah
+    wie moeglich an der Plattenrueckseite (0.5-1mm Abstand), idealerweise mit
+    etwas Diffusorfolie/Silikon im Loch, damit der Lichtpunkt weich statt
+    stechend wirkt. Bei 2-3mm Plattenstaerke reicht meist ein reiner
+    Durchbruch ohne extra Lichtleiter.
   -->
   <g>
-    <circle class="cut" cx="24" cy="19" r="1.5"/>
+    <circle class="cut" cx="24" cy="19" r="0.4"/>
     <text class="label" x="20.5" y="24.5" font-size="1.8">Armed</text>
-    <circle class="cut" cx="34" cy="19" r="1.5"/>
+    <circle class="cut" cx="34" cy="19" r="0.4"/>
     <text class="label" x="29.5" y="24.5" font-size="1.8">Disarm</text>
-    <circle class="cut" cx="44" cy="19" r="1.5"/>
+    <circle class="cut" cx="44" cy="19" r="0.4"/>
     <text class="label" x="41.5" y="24.5" font-size="1.8">Alarm</text>
-    <circle class="cut" cx="54" cy="19" r="1.5"/>
+    <circle class="cut" cx="54" cy="19" r="0.4"/>
     <text class="label" x="49.5" y="24.5" font-size="1.8">Aktiv</text>
   </g>
 </svg>
