@@ -16,18 +16,18 @@ Assistant** as a package/automation (e.g. built on top of the
 The ESP32 only:
 - reports raw touch events (digits 0-9, ARM, DISARM) as `binary_sensor`
   entities over the ESPHome native API
-- exposes 4 status LEDs (Armed / Disarmed / Alarm / Aktiv) as `light`
-  entities that Home Assistant turns on/off
+- exposes one RGB backlight (`light.rgb`) that Home Assistant drives to
+  show status
 
 Everything else — collecting digits into a PIN, comparing it to a code,
 tracking failed attempts/lockout, arming/disarming, reacting to door
 contacts elsewhere in the house, triggering a siren — is a Home Assistant
 automation/package that listens to these 12 touch entities and drives the
-4 LED entities. This keeps the device dumb and swappable, and all "software"
+backlight. This keeps the device dumb and swappable, and all "software"
 logic (delays, users, PINs) is edited in HA instead of reflashed firmware.
 
 ## Files
-- `alarmanlage.yaml`: ESPHome configuration for the panel (touch + LEDs only)
+- `alarmanlage.yaml`: ESPHome configuration for the panel (touch + backlight only)
 - `secrets.example.yaml`: Example secrets file (currently barely needed —
   no PIN/NFC secrets live on the device anymore)
 
@@ -48,16 +48,26 @@ plate replacing the switch insert.
   no mechanical buttons, no holes in the face plate for digits/symbols.
   Each channel is wired to a small copper pad on a carrier PCB mounted
   directly behind the (non-conductive) cover plate.
-- **1 MCP23017** (I2C, address `0x20`) drives the 4 status LEDs — only 4 of
-  its 16 pins are used now that the buttons moved to the MPR121.
+- **No MCP23017 anymore.** Status is no longer shown via individual LEDs —
+  instead the whole engraved touch grid is backlit by **2 RGB LEDs edge-lit
+  into the face plate** (parallel, driven from 3 ESP32 PWM pins, no I/O
+  expander needed for that). Laser-cut acrylic edges come out polished
+  enough for total internal reflection, and the engraved symbols scatter
+  light preferentially — so the numbers/ARM/DISARM glow from inside while
+  the rest of the plate stays dark, without needing 12 separate LEDs or any
+  light-blocking structure between zones.
+  - White (brief) = key press feedback
+  - Blue (brief) = armed successfully
+  - Green (brief) = disarmed successfully
+  - Red (blinking) = alarm triggered
+  - All driven from Home Assistant via `light.turn_on` with `rgb_color`.
 - **Front plate stays closed**: the 12 digit/ARM/DISARM symbols are only
   **engraved**, not cut through — better sealed against dust/moisture, and
   touch sensitivity works fine through 2-3mm acrylic/PMMA (adjust the
   MPR121 touch threshold in the ESPHome config if it's too sensitive/numb).
-- **4 status LEDs** (Armed / Disarmed / Alarm / Aktiv) as tiny 0.8mm
-  pinholes, MacBook sleep-LED style — nearly invisible when off, a soft
-  glow when on. SMD LED mounted as close as possible behind the pinhole
-  (0.5-1mm gap), unlike the touch zones these still need a real through-hole.
+- The LED-facing edge of the plate must stay uncovered by the LS990 frame/
+  mounting bracket, otherwise no light gets injected — check clearance
+  before finalizing which edge the LEDs sit on.
 - No OLED and no NFC reader on this panel: a single LS990 gang (~50x50mm
   usable) is too small to fit a display or an RC522 antenna alongside 12
   touch zones. Status is shown on the Home Assistant dashboard/app instead;

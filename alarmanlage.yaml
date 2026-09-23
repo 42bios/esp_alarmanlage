@@ -10,7 +10,7 @@ esphome:
   min_version: 2025.6.0
   project:
     name: local.esp_alarmanlage
-    version: "4.0.0"
+    version: "5.0.0"
 
 esp32:
   board: esp32-poe-iso
@@ -119,45 +119,34 @@ binary_sensor:
     channel: 11
     name: "${friendly_name} Taste DISARM"
 
-mcp23017:
-  # Nur noch fuer die 4 LEDs - Taster laufen jetzt ueber den MPR121, daher
-  # reichen 4 von 16 Pins.
-  - id: mcp_panel
-    address: 0x20
-
-# 4 Status-LEDs, komplett von HA gesteuert (light.turn_on/off Service-Calls
-# aus der HA-Automation heraus, z.B. bei alarm_control_panel-Zustandswechsel
-# oder als kurzes "Taste erkannt"-Blinken auf der Aktiv-LED). Anders als die
-# Touchflaechen brauchen die LEDs weiterhin ein kleines durchgehendes Loch
-# bzw. ein mattiertes Fenster in der Frontplatte, damit sie sichtbar sind.
+# Kein MCP23017 mehr - Taster laufen ueber den MPR121, und statt einzelner
+# Status-LEDs gibt es jetzt EINE RGB-Kantenbeleuchtung fuer die ganze Platte:
+# 2x RGB-LED (parallel an denselben 3 PWM-Kanaelen) strahlen von einer Kante
+# seitlich ins Acryl ein. Laser-geschnittene Kanten sind glaspoliert genug
+# fuer Totalreflexion, und die Gravur der Ziffern/Symbole streut das Licht
+# bevorzugt dort raus - die Symbole "gluehen" von innen, der Rest der Platte
+# bleibt dunkel. Farbe zeigt den Zustand:
+#   Weiss (kurz)  = Tastendruck-Feedback
+#   Blau (kurz)   = erfolgreich scharf gestellt
+#   Gruen (kurz)  = erfolgreich unscharf gestellt
+#   Rot (blinkend)= Alarm ausgeloest
+# Alles wird von Home Assistant gesteuert (light.turn_on mit rgb_color).
+# Pins: freie, nicht-strapping GPIOs (0/2/12/15 bewusst vermieden).
 output:
-  - platform: gpio
-    pin: {mcp23xxx: mcp_panel, number: 0, mode: {output: true}}
-    id: led_armed_out
-  - platform: gpio
-    pin: {mcp23xxx: mcp_panel, number: 1, mode: {output: true}}
-    id: led_disarmed_out
-  - platform: gpio
-    pin: {mcp23xxx: mcp_panel, number: 2, mode: {output: true}}
-    id: led_alarm_out
-  - platform: gpio
-    pin: {mcp23xxx: mcp_panel, number: 3, mode: {output: true}}
-    id: led_active_out
+  - platform: ledc
+    pin: GPIO4
+    id: backlight_red
+  - platform: ledc
+    pin: GPIO5
+    id: backlight_green
+  - platform: ledc
+    pin: GPIO16
+    id: backlight_blue
 
 light:
-  - platform: binary
-    id: led_armed
-    name: "${friendly_name} LED Armed"
-    output: led_armed_out
-  - platform: binary
-    id: led_disarmed
-    name: "${friendly_name} LED Disarmed"
-    output: led_disarmed_out
-  - platform: binary
-    id: led_alarm
-    name: "${friendly_name} LED Alarm"
-    output: led_alarm_out
-  - platform: binary
-    id: led_active
-    name: "${friendly_name} LED Aktiv"
-    output: led_active_out
+  - platform: rgb
+    id: panel_backlight
+    name: "${friendly_name} Beleuchtung"
+    red: backlight_red
+    green: backlight_green
+    blue: backlight_blue
