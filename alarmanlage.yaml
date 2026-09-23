@@ -1,9 +1,6 @@
 substitutions:
   device_name: alarmanlage
-  friendly_name: Alarmanlage
-  alarm_code: !secret alarm_code
-  nfc_tag_1: !secret nfc_tag_1
-  nfc_tag_2: !secret nfc_tag_2
+  friendly_name: Alarmanlage Bedieneinheit
   # Wichtig: Pins passend zu deinem echten Verdrahtungsplan anpassen.
   # Bei Ethernet sind RMII-Pins reserviert und nicht frei nutzbar.
 
@@ -13,11 +10,7 @@ esphome:
   min_version: 2025.6.0
   project:
     name: local.esp_alarmanlage
-    version: "2.0.0"
-  on_boot:
-    priority: -100
-    then:
-      - script.execute: refresh_leds
+    version: "3.0.0"
 
 esp32:
   board: esp32-poe-iso
@@ -27,6 +20,11 @@ esp32:
 logger:
   baud_rate: 0
 
+# Alle Entities werden ueber die native API an Home Assistant gemeldet.
+# Diese Bedieneinheit enthaelt KEINE Alarmlogik mehr (kein PIN-Check, kein
+# Arm/Disarm-Status, keine Tuerkontakte, keine Sirene) - das laeuft komplett
+# als HA-Automation/Package. Das Board meldet nur rohe Tastendruecke und
+# nimmt LED-Befehle von HA entgegen.
 api:
 
 ota:
@@ -43,89 +41,98 @@ ethernet:
 web_server:
   port: 80
 
-time:
-  - platform: homeassistant
-    id: ha_time
-
 i2c:
   sda: GPIO32
   scl: GPIO33
   scan: true
 
-spi:
-  clk_pin: GPIO14
-  mosi_pin: GPIO13
-  miso_pin: GPIO39
+mcp23017:
+  # Ein einzelner MCP23017 reicht: 12 Taster (Eingaenge) + 4 LEDs (Ausgaenge)
+  # = 16 Pins, passt exakt. Kein zweiter Expander noetig, da Tueren/Sirene
+  # jetzt ueber andere HA-Geraete/Integrationen laufen.
+  - id: mcp_panel
+    address: 0x20
 
-font:
-  - file: "gfonts://Roboto Mono"
-    id: oled_font
-    size: 8
+# 12 einzelne Taster (0-9, ARM, DISARM), jeder gegen GND, interner Pullup.
+# Kein Matrix-Scan - jeder Taster ist eine eigene HA-Entity. Die PIN-Logik
+# (Ziffern sammeln, mit Code vergleichen, Lockout) lebt komplett in HA.
+binary_sensor:
+  - platform: gpio
+    name: "${friendly_name} Taste 1"
+    pin: {mcp23xxx: mcp_panel, number: 0, mode: {input: true, pullup: true}, inverted: true}
+    filters: [{delayed_on: 20ms}]
 
-globals:
-  - id: alarm_armed
-    type: bool
-    restore_value: yes
-    initial_value: 'false'
-  - id: alarm_triggered
-    type: bool
-    restore_value: no
-    initial_value: 'false'
-  - id: pin_buffer
-    type: std::string
-    restore_value: no
-    initial_value: '""'
-  - id: last_event
-    type: std::string
-    restore_value: no
-    initial_value: '"Bereit"'
-  - id: failed_attempts
-    type: int
-    restore_value: no
-    initial_value: '0'
-  - id: lockout_until_ms
-    type: uint32_t
-    restore_value: no
-    initial_value: '0'
-  - id: entry_delay_active
-    type: bool
-    restore_value: no
-    initial_value: 'false'
-  - id: last_key_char
-    type: std::string
-    restore_value: no
-    initial_value: '""'
-  - id: last_key_ms
-    type: uint32_t
-    restore_value: no
-    initial_value: '0'
-  - id: pin_ok
-    type: bool
-    restore_value: no
-    initial_value: 'false'
+  - platform: gpio
+    name: "${friendly_name} Taste 2"
+    pin: {mcp23xxx: mcp_panel, number: 1, mode: {input: true, pullup: true}, inverted: true}
+    filters: [{delayed_on: 20ms}]
 
+  - platform: gpio
+    name: "${friendly_name} Taste 3"
+    pin: {mcp23xxx: mcp_panel, number: 2, mode: {input: true, pullup: true}, inverted: true}
+    filters: [{delayed_on: 20ms}]
+
+  - platform: gpio
+    name: "${friendly_name} Taste 4"
+    pin: {mcp23xxx: mcp_panel, number: 3, mode: {input: true, pullup: true}, inverted: true}
+    filters: [{delayed_on: 20ms}]
+
+  - platform: gpio
+    name: "${friendly_name} Taste 5"
+    pin: {mcp23xxx: mcp_panel, number: 4, mode: {input: true, pullup: true}, inverted: true}
+    filters: [{delayed_on: 20ms}]
+
+  - platform: gpio
+    name: "${friendly_name} Taste 6"
+    pin: {mcp23xxx: mcp_panel, number: 5, mode: {input: true, pullup: true}, inverted: true}
+    filters: [{delayed_on: 20ms}]
+
+  - platform: gpio
+    name: "${friendly_name} Taste 7"
+    pin: {mcp23xxx: mcp_panel, number: 6, mode: {input: true, pullup: true}, inverted: true}
+    filters: [{delayed_on: 20ms}]
+
+  - platform: gpio
+    name: "${friendly_name} Taste 8"
+    pin: {mcp23xxx: mcp_panel, number: 7, mode: {input: true, pullup: true}, inverted: true}
+    filters: [{delayed_on: 20ms}]
+
+  - platform: gpio
+    name: "${friendly_name} Taste 9"
+    pin: {mcp23xxx: mcp_panel, number: 8, mode: {input: true, pullup: true}, inverted: true}
+    filters: [{delayed_on: 20ms}]
+
+  - platform: gpio
+    name: "${friendly_name} Taste 0"
+    pin: {mcp23xxx: mcp_panel, number: 9, mode: {input: true, pullup: true}, inverted: true}
+    filters: [{delayed_on: 20ms}]
+
+  - platform: gpio
+    name: "${friendly_name} Taste ARM"
+    pin: {mcp23xxx: mcp_panel, number: 10, mode: {input: true, pullup: true}, inverted: true}
+    filters: [{delayed_on: 20ms}]
+
+  - platform: gpio
+    name: "${friendly_name} Taste DISARM"
+    pin: {mcp23xxx: mcp_panel, number: 11, mode: {input: true, pullup: true}, inverted: true}
+    filters: [{delayed_on: 20ms}]
+
+# 4 Status-LEDs, komplett von HA gesteuert (light.turn_on/off Service-Calls
+# aus der HA-Automation heraus, z.B. bei alarm_control_panel-Zustandswechsel
+# oder als kurzes "Taste erkannt"-Blinken auf der Aktiv-LED).
 output:
   - platform: gpio
-    pin:
-      mcp23xxx: mcp_hub
-      number: 8
-      mode:
-        output: true
+    pin: {mcp23xxx: mcp_panel, number: 12, mode: {output: true}}
     id: led_armed_out
   - platform: gpio
-    pin:
-      mcp23xxx: mcp_hub
-      number: 9
-      mode:
-        output: true
+    pin: {mcp23xxx: mcp_panel, number: 13, mode: {output: true}}
     id: led_disarmed_out
   - platform: gpio
-    pin:
-      mcp23xxx: mcp_hub
-      number: 11
-      mode:
-        output: true
+    pin: {mcp23xxx: mcp_panel, number: 14, mode: {output: true}}
     id: led_alarm_out
+  - platform: gpio
+    pin: {mcp23xxx: mcp_panel, number: 15, mode: {output: true}}
+    id: led_active_out
 
 light:
   - platform: binary
@@ -140,401 +147,7 @@ light:
     id: led_alarm
     name: "${friendly_name} LED Alarm"
     output: led_alarm_out
-
-switch:
-  - platform: gpio
-    id: siren
-    name: "${friendly_name} Sirene"
-    pin:
-      mcp23xxx: mcp_hub
-      number: 10
-      mode:
-        output: true
-    restore_mode: ALWAYS_OFF
-
-button:
-  - platform: template
-    name: "${friendly_name} Alarm Toggle"
-    on_press:
-      - script.execute: toggle_alarm_state
-  - platform: template
-    name: "${friendly_name} Alarm Arm"
-    on_press:
-      - script.execute: arm_alarm
-  - platform: template
-    name: "${friendly_name} Alarm Disarm"
-    on_press:
-      - script.execute: disarm_alarm
-  - platform: template
-    name: "${friendly_name} Alarm Reset Trigger"
-    on_press:
-      - lambda: |-
-          id(alarm_triggered) = false;
-          id(entry_delay_active) = false;
-          id(last_event) = "Alarmstatus zurueckgesetzt";
-      - switch.turn_off: siren
-      - script.execute: refresh_leds
-
-script:
-  - id: refresh_leds
-    mode: restart
-    then:
-      - if:
-          condition:
-            lambda: 'return id(alarm_armed);'
-          then:
-            - light.turn_on: led_armed
-            - light.turn_off: led_disarmed
-          else:
-            - light.turn_off: led_armed
-            - light.turn_on: led_disarmed
-      - if:
-          condition:
-            lambda: 'return id(alarm_triggered);'
-          then:
-            - light.turn_on: led_alarm
-          else:
-            - light.turn_off: led_alarm
-
-  - id: arm_alarm
-    mode: restart
-    then:
-      - lambda: |-
-          id(alarm_armed) = true;
-          id(alarm_triggered) = false;
-          id(entry_delay_active) = false;
-          id(pin_buffer).clear();
-          id(last_event) = "Alarm aktiviert";
-      - switch.turn_off: siren
-      - script.execute: refresh_leds
-
-  - id: disarm_alarm
-    mode: restart
-    then:
-      - lambda: |-
-          id(alarm_armed) = false;
-          id(alarm_triggered) = false;
-          id(entry_delay_active) = false;
-          id(pin_buffer).clear();
-          id(last_event) = "Alarm deaktiviert";
-      - switch.turn_off: siren
-      - script.execute: refresh_leds
-
-  - id: toggle_alarm_state
-    mode: restart
-    then:
-      - if:
-          condition:
-            lambda: 'return id(alarm_armed);'
-          then:
-            - script.execute: disarm_alarm
-          else:
-            - script.execute: arm_alarm
-
-  - id: trigger_alarm_now
-    mode: restart
-    then:
-      - lambda: |-
-          id(alarm_triggered) = true;
-          id(entry_delay_active) = false;
-          id(last_event) = "ALARM AUSGELOEST";
-      - switch.turn_on: siren
-      - script.execute: refresh_leds
-
-  - id: start_entry_delay
-    mode: restart
-    then:
-      - lambda: |-
-          id(entry_delay_active) = true;
-          id(last_event) = "Entry delay 30s";
-      - delay: 30s
-      - if:
-          condition:
-            lambda: 'return id(alarm_armed) && id(entry_delay_active);'
-          then:
-            - script.execute: trigger_alarm_now
-          else:
-            - lambda: |-
-                id(entry_delay_active) = false;
-
-  # Ziffern-Taster (0-9) des Eigenbau-Keypads: jeder Taster ruft dieses Script
-  # nur mit seiner eigenen Ziffer auf - kein Matrix-Scan, ein Pin pro Taster.
-  - id: key_digit
-    mode: queued
-    parameters:
-      key: string
-    then:
-      - lambda: |-
-          const uint32_t now = millis();
-          if (now < id(lockout_until_ms)) {
-            id(last_event) = "Tastatur gesperrt";
-            return;
-          }
-          id(last_key_char) = key;
-          id(last_key_ms) = now;
-          if (id(pin_buffer).size() < 8) {
-            id(pin_buffer).push_back(key[0]);
-          }
-          id(last_event) = "PIN Eingabe";
-
-  # Prueft den eingegebenen PIN und fuehrt bei Erfolg arm/disarm aus.
-  # Ersetzt die frueheren "*"- (loeschen) und "#"- (bestaetigen) Tasten durch
-  # zwei dedizierte physische Taster: ARM und DISARM.
-  - id: request_arm
-    mode: restart
-    then:
-      - lambda: |-
-          const uint32_t now = millis();
-          id(pin_ok) = false;
-          id(last_key_char) = "ARM";
-          id(last_key_ms) = now;
-          if (now < id(lockout_until_ms)) {
-            id(last_event) = "Tastatur gesperrt";
-            return;
-          }
-          if (id(pin_buffer) == std::string("${alarm_code}")) {
-            id(pin_ok) = true;
-            id(failed_attempts) = 0;
-          } else {
-            id(failed_attempts) += 1;
-            id(pin_buffer).clear();
-            id(last_event) = "Falscher PIN";
-            if (id(failed_attempts) >= 3) {
-              id(lockout_until_ms) = now + 30000;
-              id(failed_attempts) = 0;
-              id(last_event) = "Sperre 30s";
-            }
-          }
-      - if:
-          condition:
-            lambda: 'return id(pin_ok);'
-          then:
-            - script.execute: arm_alarm
-
-  - id: request_disarm
-    mode: restart
-    then:
-      - lambda: |-
-          const uint32_t now = millis();
-          id(pin_ok) = false;
-          id(last_key_char) = "DISARM";
-          id(last_key_ms) = now;
-          if (now < id(lockout_until_ms)) {
-            id(last_event) = "Tastatur gesperrt";
-            return;
-          }
-          if (id(pin_buffer) == std::string("${alarm_code}")) {
-            id(pin_ok) = true;
-            id(failed_attempts) = 0;
-          } else {
-            id(failed_attempts) += 1;
-            id(pin_buffer).clear();
-            id(last_event) = "Falscher PIN";
-            if (id(failed_attempts) >= 3) {
-              id(lockout_until_ms) = now + 30000;
-              id(failed_attempts) = 0;
-              id(last_event) = "Sperre 30s";
-            }
-          }
-      - if:
-          condition:
-            lambda: 'return id(pin_ok);'
-          then:
-            - script.execute: disarm_alarm
-
-display:
-  - platform: ssd1306_i2c
-    model: "SSD1306 128x32"
-    address: 0x3C
-    update_interval: 200ms
-    lambda: |-
-      it.printf(0, 0, id(oled_font), "Alarm: %s", id(alarm_armed) ? "AN" : "AUS");
-
-      // Frisch gedrueckte Taste/Aktion kurz im Klartext zeigen, danach maskieren.
-      if (millis() - id(last_key_ms) < 800 && !id(last_key_char).empty()) {
-        it.printf(0, 10, id(oled_font), "Taste: %s", id(last_key_char).c_str());
-      } else {
-        std::string masked(id(pin_buffer).size(), '*');
-        it.printf(0, 10, id(oled_font), "PIN: %s", masked.c_str());
-      }
-
-      std::string line = id(last_event);
-      if (line.size() > 21) {
-        line = line.substr(0, 21);
-      }
-      it.printf(0, 21, id(oled_font), "%s", line.c_str());
-
-mcp23017:
-  - id: mcp_hub
-    address: 0x20
-  # Zweiter Expander nur fuer das selbstgebaute Taster-Keypad (Taster gegen GND,
-  # interner Pullup aktiv). Haelt das Keypad komplett getrennt vom Tuer/Sirenen-Hub.
-  - id: mcp_keypad
-    address: 0x21
-
-binary_sensor:
-  - platform: gpio
-    name: "${friendly_name} Tuer 1"
-    pin:
-      mcp23xxx: mcp_hub
-      number: 0
-      mode:
-        input: true
-        pullup: true
-      inverted: true
-    on_press:
-      then:
-        - if:
-            condition:
-              lambda: 'return id(alarm_armed);'
-            then:
-              - script.execute: start_entry_delay
-    filters:
-      - delayed_on: 50ms
-      - delayed_off: 50ms
-
-  - platform: gpio
-    name: "${friendly_name} Tuer 2"
-    pin:
-      mcp23xxx: mcp_hub
-      number: 1
-      mode:
-        input: true
-        pullup: true
-      inverted: true
-    on_press:
-      then:
-        - if:
-            condition:
-              lambda: 'return id(alarm_armed);'
-            then:
-              - script.execute: start_entry_delay
-    filters:
-      - delayed_on: 50ms
-      - delayed_off: 50ms
-
-  - platform: template
-    name: "${friendly_name} Armed"
-    lambda: 'return id(alarm_armed);'
-    update_interval: 1s
-
-  - platform: template
-    name: "${friendly_name} Triggered"
-    lambda: 'return id(alarm_triggered);'
-    update_interval: 1s
-
-  - platform: template
-    name: "${friendly_name} Entry Delay"
-    lambda: 'return id(entry_delay_active);'
-    update_interval: 1s
-
-  # Eigenbau-Keypad: 10 Zifferntaster (0-9) + 2 Aktionstaster (ARM/DISARM),
-  # alle einzeln gegen GND am zweiten MCP23017 (mcp_keypad). Kein Matrix-Scan,
-  # kein Diodenmatrix - jeder Taster hat einen eigenen Pin.
-  - platform: gpio
-    name: "${friendly_name} Taste 1"
-    pin: {mcp23xxx: mcp_keypad, number: 0, mode: {input: true, pullup: true}, inverted: true}
-    on_press:
-      - script.execute: {id: key_digit, key: "1"}
-    filters: [{delayed_on: 20ms}]
-
-  - platform: gpio
-    name: "${friendly_name} Taste 2"
-    pin: {mcp23xxx: mcp_keypad, number: 1, mode: {input: true, pullup: true}, inverted: true}
-    on_press:
-      - script.execute: {id: key_digit, key: "2"}
-    filters: [{delayed_on: 20ms}]
-
-  - platform: gpio
-    name: "${friendly_name} Taste 3"
-    pin: {mcp23xxx: mcp_keypad, number: 2, mode: {input: true, pullup: true}, inverted: true}
-    on_press:
-      - script.execute: {id: key_digit, key: "3"}
-    filters: [{delayed_on: 20ms}]
-
-  - platform: gpio
-    name: "${friendly_name} Taste 4"
-    pin: {mcp23xxx: mcp_keypad, number: 3, mode: {input: true, pullup: true}, inverted: true}
-    on_press:
-      - script.execute: {id: key_digit, key: "4"}
-    filters: [{delayed_on: 20ms}]
-
-  - platform: gpio
-    name: "${friendly_name} Taste 5"
-    pin: {mcp23xxx: mcp_keypad, number: 4, mode: {input: true, pullup: true}, inverted: true}
-    on_press:
-      - script.execute: {id: key_digit, key: "5"}
-    filters: [{delayed_on: 20ms}]
-
-  - platform: gpio
-    name: "${friendly_name} Taste 6"
-    pin: {mcp23xxx: mcp_keypad, number: 5, mode: {input: true, pullup: true}, inverted: true}
-    on_press:
-      - script.execute: {id: key_digit, key: "6"}
-    filters: [{delayed_on: 20ms}]
-
-  - platform: gpio
-    name: "${friendly_name} Taste 7"
-    pin: {mcp23xxx: mcp_keypad, number: 6, mode: {input: true, pullup: true}, inverted: true}
-    on_press:
-      - script.execute: {id: key_digit, key: "7"}
-    filters: [{delayed_on: 20ms}]
-
-  - platform: gpio
-    name: "${friendly_name} Taste 8"
-    pin: {mcp23xxx: mcp_keypad, number: 7, mode: {input: true, pullup: true}, inverted: true}
-    on_press:
-      - script.execute: {id: key_digit, key: "8"}
-    filters: [{delayed_on: 20ms}]
-
-  - platform: gpio
-    name: "${friendly_name} Taste 9"
-    pin: {mcp23xxx: mcp_keypad, number: 8, mode: {input: true, pullup: true}, inverted: true}
-    on_press:
-      - script.execute: {id: key_digit, key: "9"}
-    filters: [{delayed_on: 20ms}]
-
-  - platform: gpio
-    name: "${friendly_name} Taste 0"
-    pin: {mcp23xxx: mcp_keypad, number: 9, mode: {input: true, pullup: true}, inverted: true}
-    on_press:
-      - script.execute: {id: key_digit, key: "0"}
-    filters: [{delayed_on: 20ms}]
-
-  - platform: gpio
-    name: "${friendly_name} Taste ARM"
-    pin: {mcp23xxx: mcp_keypad, number: 10, mode: {input: true, pullup: true}, inverted: true}
-    on_press:
-      - script.execute: request_arm
-    filters: [{delayed_on: 20ms}]
-
-  - platform: gpio
-    name: "${friendly_name} Taste DISARM"
-    pin: {mcp23xxx: mcp_keypad, number: 11, mode: {input: true, pullup: true}, inverted: true}
-    on_press:
-      - script.execute: request_disarm
-    filters: [{delayed_on: 20ms}]
-
-rc522_spi:
-  cs_pin: GPIO15
-  update_interval: 1s
-  on_tag:
-    then:
-      - lambda: |-
-          if (x == std::string("${nfc_tag_1}") || x == std::string("${nfc_tag_2}")) {
-            id(toggle_alarm_state).execute();
-            id(last_event) = "NFC akzeptiert";
-          } else {
-            id(last_event) = "NFC unbekannt";
-          }
-
-text_sensor:
-  - platform: template
-    name: "${friendly_name} Last Event"
-    lambda: 'return id(last_event);'
-    update_interval: 1s
-
-interval:
-  - interval: 10s
-    then:
-      - script.execute: refresh_leds
+  - platform: binary
+    id: led_active
+    name: "${friendly_name} LED Aktiv"
+    output: led_active_out

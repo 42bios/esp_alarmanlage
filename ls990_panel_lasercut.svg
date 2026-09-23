@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="80mm" height="80mm" viewBox="0 0 80 80">
+  <!--
+    Laser-Cut Deckel fuer JUNG LS 990, 1-fach Rahmen.
+    ACHTUNG: Masse sind Richtwerte (Rahmenausschnitt ~50x50mm, Schraubenabstand
+    ~60mm) - unbedingt am echten Rahmen/CD-Blindabdeckung nachmessen bevor
+    geschnitten wird! Alle Masse in mm, Ursprung oben links der 80x80mm Platte.
+
+    Layer:
+      - Rote Linien (class=cut)  -> Laser: Schneiden (Aussenkontur, Loecher)
+      - Blaue Linien (class=etch) -> Laser: Gravur/Beschriftung (optional)
+  -->
+  <style>
+    .cut   { fill:none; stroke:#ff0000; stroke-width:0.1; }
+    .etch  { fill:none; stroke:#0000ff; stroke-width:0.1; }
+    .label { font-family:Arial, sans-serif; font-size:3px; fill:#0000ff; stroke:none; }
+    .mount { fill:none; stroke:#ff0000; stroke-width:0.1; }
+  </style>
+
+  <!-- Aussenkontur der Platte: 80x80mm, deckt den LS990-Rahmen ab -->
+  <rect class="cut" x="0" y="0" width="80" height="80" rx="2" ry="2"/>
+
+  <!-- Montage-/Zentrierloecher passend zu LS990-Traeger (Richtwert 60mm Lochabstand) -->
+  <circle class="mount" cx="10" cy="10" r="1.6"/>
+  <circle class="mount" cx="70" cy="10" r="1.6"/>
+  <circle class="mount" cx="10" cy="70" r="1.6"/>
+  <circle class="mount" cx="70" cy="70" r="1.6"/>
+
+  <!-- Sichtbarer Rahmenausschnitt (Referenzlinie, NICHT schneiden - nur Orientierung) -->
+  <rect class="etch" x="15" y="15" width="50" height="50"/>
+  <text class="label" x="16" y="13">Rahmen-Referenz ~50x50mm (nicht schneiden)</text>
+
+  <!--
+    Tastergrid: 3 Spalten x 4 Zeilen, Lochdurchmesser 7mm (fuer 6mm Tastkappe),
+    Pitch 12mm, zentriert im 50x50mm Feld, oberer Rand fuer LED-Leiste reserviert.
+    Reihenfolge (wie im ESPHome-Panel): 1 2 3 / 4 5 6 / 7 8 9 / ARM 0 DISARM
+  -->
+  <!-- Grid-Ursprung: x=21 (erste Spaltenmitte), y=30 (erste Zeilenmitte) -->
+  <g>
+    <!-- Reihe 1: 1 2 3 -->
+    <circle class="cut" cx="21" cy="30" r="3.5"/>
+    <text class="label" x="19.3" y="31" font-size="2.2">1</text>
+    <circle class="cut" cx="33" cy="30" r="3.5"/>
+    <text class="label" x="31.3" y="31" font-size="2.2">2</text>
+    <circle class="cut" cx="45" cy="30" r="3.5"/>
+    <text class="label" x="43.3" y="31" font-size="2.2">3</text>
+
+    <!-- Reihe 2: 4 5 6 -->
+    <circle class="cut" cx="21" cy="42" r="3.5"/>
+    <text class="label" x="19.3" y="43" font-size="2.2">4</text>
+    <circle class="cut" cx="33" cy="42" r="3.5"/>
+    <text class="label" x="31.3" y="43" font-size="2.2">5</text>
+    <circle class="cut" cx="45" cy="42" r="3.5"/>
+    <text class="label" x="43.3" y="43" font-size="2.2">6</text>
+
+    <!-- Reihe 3: 7 8 9 -->
+    <circle class="cut" cx="21" cy="54" r="3.5"/>
+    <text class="label" x="19.3" y="55" font-size="2.2">7</text>
+    <circle class="cut" cx="33" cy="54" r="3.5"/>
+    <text class="label" x="31.3" y="55" font-size="2.2">8</text>
+    <circle class="cut" cx="45" cy="54" r="3.5"/>
+    <text class="label" x="43.3" y="55" font-size="2.2">9</text>
+
+    <!-- Reihe 4: ARM 0 DISARM (ARM/DISARM als laengliche Ovale statt rund) -->
+    <ellipse class="cut" cx="21" cy="66" rx="4.5" ry="3.5"/>
+    <text class="label" x="16.7" y="67" font-size="2">ARM</text>
+    <circle class="cut" cx="33" cy="66" r="3.5"/>
+    <text class="label" x="31.3" y="67" font-size="2.2">0</text>
+    <ellipse class="cut" cx="45" cy="66" rx="4.5" ry="3.5"/>
+    <text class="label" x="39.5" y="67" font-size="2">DIS</text>
+  </g>
+
+  <!-- LED-Leiste oben im Rahmenfeld: 4x 3mm LEDs (Armed / Disarmed / Alarm / Aktiv) -->
+  <g>
+    <circle class="cut" cx="24" cy="19" r="1.5"/>
+    <text class="label" x="20.5" y="24.5" font-size="1.8">Armed</text>
+    <circle class="cut" cx="34" cy="19" r="1.5"/>
+    <text class="label" x="29.5" y="24.5" font-size="1.8">Disarm</text>
+    <circle class="cut" cx="44" cy="19" r="1.5"/>
+    <text class="label" x="41.5" y="24.5" font-size="1.8">Alarm</text>
+    <circle class="cut" cx="54" cy="19" r="1.5"/>
+    <text class="label" x="49.5" y="24.5" font-size="1.8">Aktiv</text>
+  </g>
+</svg>

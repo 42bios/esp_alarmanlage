@@ -1,9 +1,10 @@
 ﻿About
-This repository contains a compact ESPHome alarm system concept for Home Assistant integration.
-It targets hardware such as an Olimex ESP32-POE-ISO, a 128x32 OLED display, a custom keypad
-built from 12 individual pushbuttons (digits 0-9 plus dedicated ARM/DISARM buttons) wired to
-a second MCP23017, an RC522 NFC reader, and door contacts connected through a first MCP23017
-I/O expander.
+This repository contains a pure input/output "bedieneinheit" (HMI panel) built with ESPHome
+for Home Assistant. It targets an Olimex ESP32-POE-ISO driving one MCP23017 that reads 12
+individual pushbuttons (digits 0-9 plus dedicated ARM/DISARM buttons) and drives 4 status
+LEDs (Armed/Disarmed/Alarm/Aktiv). All alarm logic - PIN validation, arm/disarm state, door
+contacts, entry delay, siren, lockout, users - lives in Home Assistant, not on the device.
+Meant to be built into a JUNG LS 990 single-gang cover with a custom laser-cut face plate.
 
 Important Notice
 This project was created with the help of Anthropic's Claude (Claude Code).
