@@ -1,10 +1,11 @@
 ﻿About
 This repository contains a pure input/output "bedieneinheit" (HMI panel) built with ESPHome
-for Home Assistant. It targets an Olimex ESP32-POE-ISO driving one MCP23017 that reads 12
-individual pushbuttons (digits 0-9 plus dedicated ARM/DISARM buttons) and drives 4 status
+for Home Assistant. It targets an Olimex ESP32-POE-ISO driving an MPR121 capacitive touch
+sensor (12 touch zones: digits 0-9 plus dedicated ARM/DISARM) and an MCP23017 for 4 status
 LEDs (Armed/Disarmed/Alarm/Aktiv). All alarm logic - PIN validation, arm/disarm state, door
 contacts, entry delay, siren, lockout, users - lives in Home Assistant, not on the device.
-Meant to be built into a JUNG LS 990 single-gang cover with a custom laser-cut face plate.
+Meant to be built into a JUNG LS 990 single-gang cover: the face plate stays closed, symbols
+are only laser-engraved over the touch pads, only the LEDs get real through-holes.
 
 Important Notice
 This project was created with the help of Anthropic's Claude (Claude Code).

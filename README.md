@@ -14,7 +14,7 @@ Assistant** as a package/automation (e.g. built on top of the
 `alarm_control_panel` domain, or the Alarmo add-on).
 
 The ESP32 only:
-- reports raw button presses (digits 0-9, ARM, DISARM) as `binary_sensor`
+- reports raw touch events (digits 0-9, ARM, DISARM) as `binary_sensor`
   entities over the ESPHome native API
 - exposes 4 status LEDs (Armed / Disarmed / Alarm / Aktiv) as `light`
   entities that Home Assistant turns on/off
@@ -22,12 +22,12 @@ The ESP32 only:
 Everything else — collecting digits into a PIN, comparing it to a code,
 tracking failed attempts/lockout, arming/disarming, reacting to door
 contacts elsewhere in the house, triggering a siren — is a Home Assistant
-automation/package that listens to these 12 button entities and drives the
+automation/package that listens to these 12 touch entities and drives the
 4 LED entities. This keeps the device dumb and swappable, and all "software"
 logic (delays, users, PINs) is edited in HA instead of reflashed firmware.
 
 ## Files
-- `alarmanlage.yaml`: ESPHome configuration for the panel (buttons + LEDs only)
+- `alarmanlage.yaml`: ESPHome configuration for the panel (touch + LEDs only)
 - `secrets.example.yaml`: Example secrets file (currently barely needed —
   no PIN/NFC secrets live on the device anymore)
 
@@ -44,17 +44,23 @@ Designed to fit behind a **JUNG LS 990** single-gang cover frame, mounted
 into a standard flush-mount ("Kaiser") box, with a custom laser-cut face
 plate replacing the switch insert.
 
-- **1 MCP23017** (I2C, address `0x20`) handles all 16 GPIOs needed:
-  12 inputs (buttons) + 4 outputs (LEDs) — no second expander required.
-- **12 individual pushbuttons** (digits 1-9, 0, ARM, DISARM), each wired
-  directly to its own MCP23017 pin and GND, with the internal pullup
-  enabled — no diode matrix, no scanning.
-- **4 status LEDs** (Armed / Disarmed / Alarm / Aktiv) mounted in a row
-  above the button grid.
+- **1 MPR121** (I2C, address `0x5A`) reads 12 capacitive touch channels —
+  no mechanical buttons, no holes in the face plate for digits/symbols.
+  Each channel is wired to a small copper pad on a carrier PCB mounted
+  directly behind the (non-conductive) cover plate.
+- **1 MCP23017** (I2C, address `0x20`) drives the 4 status LEDs — only 4 of
+  its 16 pins are used now that the buttons moved to the MPR121.
+- **Front plate stays closed**: the 12 digit/ARM/DISARM symbols are only
+  **engraved**, not cut through — better sealed against dust/moisture, and
+  touch sensitivity works fine through 2-3mm acrylic/PMMA (adjust the
+  MPR121 touch threshold in the ESPHome config if it's too sensitive/numb).
+- **4 status LEDs** (Armed / Disarmed / Alarm / Aktiv) still need an actual
+  through-hole or a thinned diffuser window — unlike the touch zones, light
+  has to get out.
 - No OLED and no NFC reader on this panel: a single LS990 gang (~50x50mm
   usable) is too small to fit a display or an RC522 antenna alongside 12
-  buttons. Status is shown on the Home Assistant dashboard/app instead; NFC
-  (if wanted later) should be its own separate panel.
+  touch zones. Status is shown on the Home Assistant dashboard/app instead;
+  NFC (if wanted later) should be its own separate panel.
 - ⚠️ The ESP32-POE-ISO board itself (~65x51mm) plus its RJ45 jack does
   **not** fit inside a standard round flush-mount box together with the
   button PCB. Plan for a deep/rectangular back box, or mount the ESP32

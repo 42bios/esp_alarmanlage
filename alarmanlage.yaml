@@ -10,7 +10,7 @@ esphome:
   min_version: 2025.6.0
   project:
     name: local.esp_alarmanlage
-    version: "3.0.0"
+    version: "4.0.0"
 
 esp32:
   board: esp32-poe-iso
@@ -46,92 +46,102 @@ i2c:
   scl: GPIO33
   scan: true
 
+# Kapazitiver 12-Kanal-Touchsensor statt mechanischer Taster. Jeder Kanal
+# haengt an einem kleinen Kupferpad hinter der Frontplatte (Acryl/PMMA,
+# ~2-3mm), die Symbole/Ziffern werden nur graviert, nicht durchgeschnitten -
+# die Platte bleibt komplett geschlossen (kein Eindringen von Feuchtigkeit/
+# Staub durch Tasterloecher).
+mpr121:
+  - id: touch_panel
+    address: 0x5A
+
+# 12 Touch-Kanaele (0-9, ARM, DISARM). Kein Matrix-Scan noetig - jeder Kanal
+# ist eine eigene HA-Entity. Die PIN-Logik (Ziffern sammeln, mit Code
+# vergleichen, Lockout) lebt komplett in HA.
+binary_sensor:
+  - platform: mpr121
+    mpr121_id: touch_panel
+    channel: 0
+    name: "${friendly_name} Taste 1"
+
+  - platform: mpr121
+    mpr121_id: touch_panel
+    channel: 1
+    name: "${friendly_name} Taste 2"
+
+  - platform: mpr121
+    mpr121_id: touch_panel
+    channel: 2
+    name: "${friendly_name} Taste 3"
+
+  - platform: mpr121
+    mpr121_id: touch_panel
+    channel: 3
+    name: "${friendly_name} Taste 4"
+
+  - platform: mpr121
+    mpr121_id: touch_panel
+    channel: 4
+    name: "${friendly_name} Taste 5"
+
+  - platform: mpr121
+    mpr121_id: touch_panel
+    channel: 5
+    name: "${friendly_name} Taste 6"
+
+  - platform: mpr121
+    mpr121_id: touch_panel
+    channel: 6
+    name: "${friendly_name} Taste 7"
+
+  - platform: mpr121
+    mpr121_id: touch_panel
+    channel: 7
+    name: "${friendly_name} Taste 8"
+
+  - platform: mpr121
+    mpr121_id: touch_panel
+    channel: 8
+    name: "${friendly_name} Taste 9"
+
+  - platform: mpr121
+    mpr121_id: touch_panel
+    channel: 9
+    name: "${friendly_name} Taste 0"
+
+  - platform: mpr121
+    mpr121_id: touch_panel
+    channel: 10
+    name: "${friendly_name} Taste ARM"
+
+  - platform: mpr121
+    mpr121_id: touch_panel
+    channel: 11
+    name: "${friendly_name} Taste DISARM"
+
 mcp23017:
-  # Ein einzelner MCP23017 reicht: 12 Taster (Eingaenge) + 4 LEDs (Ausgaenge)
-  # = 16 Pins, passt exakt. Kein zweiter Expander noetig, da Tueren/Sirene
-  # jetzt ueber andere HA-Geraete/Integrationen laufen.
+  # Nur noch fuer die 4 LEDs - Taster laufen jetzt ueber den MPR121, daher
+  # reichen 4 von 16 Pins.
   - id: mcp_panel
     address: 0x20
 
-# 12 einzelne Taster (0-9, ARM, DISARM), jeder gegen GND, interner Pullup.
-# Kein Matrix-Scan - jeder Taster ist eine eigene HA-Entity. Die PIN-Logik
-# (Ziffern sammeln, mit Code vergleichen, Lockout) lebt komplett in HA.
-binary_sensor:
-  - platform: gpio
-    name: "${friendly_name} Taste 1"
-    pin: {mcp23xxx: mcp_panel, number: 0, mode: {input: true, pullup: true}, inverted: true}
-    filters: [{delayed_on: 20ms}]
-
-  - platform: gpio
-    name: "${friendly_name} Taste 2"
-    pin: {mcp23xxx: mcp_panel, number: 1, mode: {input: true, pullup: true}, inverted: true}
-    filters: [{delayed_on: 20ms}]
-
-  - platform: gpio
-    name: "${friendly_name} Taste 3"
-    pin: {mcp23xxx: mcp_panel, number: 2, mode: {input: true, pullup: true}, inverted: true}
-    filters: [{delayed_on: 20ms}]
-
-  - platform: gpio
-    name: "${friendly_name} Taste 4"
-    pin: {mcp23xxx: mcp_panel, number: 3, mode: {input: true, pullup: true}, inverted: true}
-    filters: [{delayed_on: 20ms}]
-
-  - platform: gpio
-    name: "${friendly_name} Taste 5"
-    pin: {mcp23xxx: mcp_panel, number: 4, mode: {input: true, pullup: true}, inverted: true}
-    filters: [{delayed_on: 20ms}]
-
-  - platform: gpio
-    name: "${friendly_name} Taste 6"
-    pin: {mcp23xxx: mcp_panel, number: 5, mode: {input: true, pullup: true}, inverted: true}
-    filters: [{delayed_on: 20ms}]
-
-  - platform: gpio
-    name: "${friendly_name} Taste 7"
-    pin: {mcp23xxx: mcp_panel, number: 6, mode: {input: true, pullup: true}, inverted: true}
-    filters: [{delayed_on: 20ms}]
-
-  - platform: gpio
-    name: "${friendly_name} Taste 8"
-    pin: {mcp23xxx: mcp_panel, number: 7, mode: {input: true, pullup: true}, inverted: true}
-    filters: [{delayed_on: 20ms}]
-
-  - platform: gpio
-    name: "${friendly_name} Taste 9"
-    pin: {mcp23xxx: mcp_panel, number: 8, mode: {input: true, pullup: true}, inverted: true}
-    filters: [{delayed_on: 20ms}]
-
-  - platform: gpio
-    name: "${friendly_name} Taste 0"
-    pin: {mcp23xxx: mcp_panel, number: 9, mode: {input: true, pullup: true}, inverted: true}
-    filters: [{delayed_on: 20ms}]
-
-  - platform: gpio
-    name: "${friendly_name} Taste ARM"
-    pin: {mcp23xxx: mcp_panel, number: 10, mode: {input: true, pullup: true}, inverted: true}
-    filters: [{delayed_on: 20ms}]
-
-  - platform: gpio
-    name: "${friendly_name} Taste DISARM"
-    pin: {mcp23xxx: mcp_panel, number: 11, mode: {input: true, pullup: true}, inverted: true}
-    filters: [{delayed_on: 20ms}]
-
 # 4 Status-LEDs, komplett von HA gesteuert (light.turn_on/off Service-Calls
 # aus der HA-Automation heraus, z.B. bei alarm_control_panel-Zustandswechsel
-# oder als kurzes "Taste erkannt"-Blinken auf der Aktiv-LED).
+# oder als kurzes "Taste erkannt"-Blinken auf der Aktiv-LED). Anders als die
+# Touchflaechen brauchen die LEDs weiterhin ein kleines durchgehendes Loch
+# bzw. ein mattiertes Fenster in der Frontplatte, damit sie sichtbar sind.
 output:
   - platform: gpio
-    pin: {mcp23xxx: mcp_panel, number: 12, mode: {output: true}}
+    pin: {mcp23xxx: mcp_panel, number: 0, mode: {output: true}}
     id: led_armed_out
   - platform: gpio
-    pin: {mcp23xxx: mcp_panel, number: 13, mode: {output: true}}
+    pin: {mcp23xxx: mcp_panel, number: 1, mode: {output: true}}
     id: led_disarmed_out
   - platform: gpio
-    pin: {mcp23xxx: mcp_panel, number: 14, mode: {output: true}}
+    pin: {mcp23xxx: mcp_panel, number: 2, mode: {output: true}}
     id: led_alarm_out
   - platform: gpio
-    pin: {mcp23xxx: mcp_panel, number: 15, mode: {output: true}}
+    pin: {mcp23xxx: mcp_panel, number: 3, mode: {output: true}}
     id: led_active_out
 
 light:
